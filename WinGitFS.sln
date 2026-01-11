@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meziantou.Framework.Win32.ProjectedFileSystem", "Meziantou.Framework.Win32.ProjectedFileSystem\Meziantou.Framework.Win32.ProjectedFileSystem.csproj", "{D88E93C2-A14D-EA1D-77C6-A3EE8E1D0CBF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinGitFS", "WinGitFS\WinGitFS.csproj", "{26DDA5B6-608A-4566-2E89-4F8EBD6FB0F0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D88E93C2-A14D-EA1D-77C6-A3EE8E1D0CBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D88E93C2-A14D-EA1D-77C6-A3EE8E1D0CBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D88E93C2-A14D-EA1D-77C6-A3EE8E1D0CBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D88E93C2-A14D-EA1D-77C6-A3EE8E1D0CBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{26DDA5B6-608A-4566-2E89-4F8EBD6FB0F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{26DDA5B6-608A-4566-2E89-4F8EBD6FB0F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{26DDA5B6-608A-4566-2E89-4F8EBD6FB0F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{26DDA5B6-608A-4566-2E89-4F8EBD6FB0F0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A711C809-D389-49A1-824F-EC21C7E2C4F7}
+	EndGlobalSection
+EndGlobal
