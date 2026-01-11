@@ -51,6 +51,15 @@ WinGitFS.exe https://github.com/owner/repo --local-path C:\MyGitFS
 - `--dirCacheTtlSeconds` - Directory cache TTL in seconds (default: 30)
 - `--fileCacheSizeMb` - File content cache size in MB (default: 256)
 
+### Environment Variables
+
+Instead of using `--pat`, you can set environment variables for authentication:
+
+- `WINGITFS_ADO_PAT` - Personal Access Token for Azure DevOps
+- `WINGITFS_GITHUB_PAT` - Personal Access Token for GitHub
+
+These are used as fallback when neither `--pat` nor `--sso` is specified.
+
 ## Building
 
 ```bash
