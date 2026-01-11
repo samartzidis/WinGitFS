@@ -44,7 +44,7 @@ WinGitFS.exe https://github.com/owner/repo --local-path C:\MyGitFS
 
 ### Options
 
-- `--local-path` - Local folder path (creates temp folder if not specified)
+- `--local-path` - Local folder path (if not specified, creates a temporary folder that is deleted on exit)
 - `--pat` - Personal Access Token for authentication
 - `--sso` - Use Azure AD SSO authentication (Azure DevOps only)
 - `--branch` - Branch to map (defaults to repository's default branch)
