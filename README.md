@@ -18,7 +18,7 @@ WinGitFS creates a read-only virtual file system that maps a remote Git reposito
 ## Requirements
 
 - Windows 10/11 (64-bit)
-- .NET 10.0 Runtime
+- .NET 8.0 Runtime
 
 ## Usage
 
