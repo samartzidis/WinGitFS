@@ -1,33 +1,30 @@
 using Meziantou.Framework.Win32.ProjectedFileSystem;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace WinGitFS;
 
-// Read-only provider that projects a Git repository (Azure DevOps or GitHub) into a ProjFS virtualization root.
-// Root level shows the contents of the configured branch (e.g., main).
+// Read-only ProjFS provider that projects a Git repository into a virtualization root.
+// Directory listings are served from GitProcessClient's in-memory tree (instant).
+// File content is fetched on demand via the persistent cat-file --batch process.
+// ProjFS itself caches hydrated files on disk, so no application-level content cache is needed.
 internal sealed class GitFsProvider : ProjectedFileSystemBase
 {
     private readonly GitFsOptions _options;
     private readonly IGitClient _git;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<GitFsProvider> _logger;
     private readonly SingleFlight _singleFlight = new();
 
     public GitFsProvider(
         GitFsOptions options,
         IGitClient git,
-        IMemoryCache cache,
         ILogger<GitFsProvider> logger)
         : base(options.VirtualizationRoot)
     {
         _options = options;
         _git = git;
-        _cache = cache;
         _logger = logger;
     }
 
-    // Single entry lookup - called when ProjFS needs info about a specific file/directory.
     protected override ProjectedFileSystemEntry? GetEntry(string path)
     {
         _logger.LogInformation("GetEntry: {Path}", path ?? "(null)");
@@ -39,7 +36,6 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
                 return ProjectedFileSystemEntry.Directory("");
             }
 
-            // Get the parent directory and find this entry in it
             var normalized = path.TrimStart('\\');
             var lastSep = normalized.LastIndexOf('\\');
             var parentPath = lastSep > 0 ? normalized[..lastSep] : "";
@@ -48,12 +44,7 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
             _logger.LogDebug("  Looking for '{EntryName}' in parent '{ParentPath}'", entryName, parentPath);
 
             var mapped = VirtualPathMapper.Map(parentPath, _options.DefaultBranch, _options.RemotePath);
-            var entries = GetDirectoryEntriesCached(mapped);
-
-            foreach (var e in entries)
-            {
-                _logger.LogDebug("    Entry: {Name} IsDir={IsDir}", e.Name, e.IsDirectory);
-            }
+            var entries = GetDirectoryEntries(mapped);
 
             var entry = entries.FirstOrDefault(e =>
                 e.Name.Equals(entryName, StringComparison.OrdinalIgnoreCase));
@@ -66,7 +57,6 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
                     return ProjectedFileSystemEntry.Directory(entry.Name);
                 }
 
-                // For files, fetch actual size if unknown (the list API doesn't return sizes for ADO)
                 var fileSize = entry.Length;
                 if (fileSize <= 0)
                 {
@@ -94,7 +84,6 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
         }
     }
 
-    // Directory listing callback.
     protected override IEnumerable<ProjectedFileSystemEntry> GetEntries(string path)
     {
         _logger.LogInformation("GetEntries called: {Path}", path ?? "(null)");
@@ -104,8 +93,8 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
             _logger.LogInformation("  Mapped: {VirtualPath} -> {VersionType}:{Branch}:{RepoPath}",
                 path ?? "(root)", mapped.VersionType, mapped.Version, mapped.RepoPath);
 
-            var entries = GetDirectoryEntriesCached(mapped);
-            var entryList = entries.ToList(); // Force evaluation inside try-catch
+            var entries = GetDirectoryEntries(mapped);
+            var entryList = entries.ToList();
 
             _logger.LogInformation("  Found {Count} entries:", entryList.Count);
             foreach (var e in entryList)
@@ -117,33 +106,29 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "GetEntries FAILED for path: {Path}", path);
-            throw; // Re-throw so ProjFS knows it failed
-        }
-    }
-
-    private IEnumerable<ProjectedFileSystemEntry> GetDirectoryEntriesCached(VirtualPathMapper.MappedPath mapped)
-    {
-        var key = $"dir::{mapped.VersionType}::{mapped.Version}::{mapped.RepoPath}";
-        _logger.LogDebug("GetDirectoryEntriesCached: key={Key}", key);
-
-        try
-        {
-            return _singleFlight.DoAsync(key, async () =>
-            {
-                _logger.LogDebug("SingleFlight executing for key={Key}", key);
-                var entries = await GetDirectoryEntriesAsync(mapped, CancellationToken.None).ConfigureAwait(false);
-                _logger.LogDebug("GetDirectoryEntriesAsync returned {Count} entries", entries.Count);
-                return entries.ToArray();
-            }).GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetDirectoryEntriesCached FAILED for key={Key}", key);
             throw;
         }
     }
 
-    // File content callback (full-file hydration). ProjFS will stream from the returned Stream.
+    private IReadOnlyList<ProjectedFileSystemEntry> GetDirectoryEntries(VirtualPathMapper.MappedPath mapped)
+    {
+        var scopePath = mapped.RepoPath;
+        if (string.IsNullOrEmpty(scopePath))
+            scopePath = "/";
+
+        var items = _git.ListItemsAsync(mapped.VersionType, mapped.Version, scopePath, CancellationToken.None)
+            .GetAwaiter().GetResult();
+
+        return items.Select(i =>
+        {
+            if (i.IsFolder)
+                return ProjectedFileSystemEntry.Directory(i.Name);
+
+            var size = i.Size <= 0 ? 0 : (int)Math.Min(i.Size, int.MaxValue);
+            return ProjectedFileSystemEntry.File(i.Name, size);
+        }).ToArray();
+    }
+
     protected override Stream OpenRead(string path)
     {
         _logger.LogInformation("OpenRead called: {Path}", path);
@@ -155,29 +140,15 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
             if (mapped.RepoPath.EndsWith("/", StringComparison.Ordinal))
                 throw new IOException("Cannot open a directory for reading.");
 
-            var key = $"file::{mapped.VersionType}::{mapped.Version}::{mapped.RepoPath}";
-            var bytes = _singleFlight.DoAsync(key, async () =>
+            var bytes = _singleFlight.DoAsync($"file::{mapped.RepoPath}", async () =>
             {
-                if (_cache.TryGetValue(key, out byte[]? cached) && cached is not null)
-                    return cached;
-
                 var fetched = await _git.GetFileBytesAsync(mapped.VersionType, mapped.Version, mapped.RepoPath, CancellationToken.None).ConfigureAwait(false);
-                if (fetched is null)
-                    return Array.Empty<byte>();
-
-                _cache.Set(key, fetched, new MemoryCacheEntryOptions
-                {
-                    Size = Math.Max(1, fetched.LongLength),
-                    SlidingExpiration = TimeSpan.FromMinutes(5),
-                });
-
-                return fetched;
+                return fetched ?? Array.Empty<byte>();
             }).GetAwaiter().GetResult();
 
             if (bytes.Length == 0)
                 throw new FileNotFoundException("File not found in repository.", path);
 
-            // Return a non-writable stream.
             return new MemoryStream(bytes, writable: false);
         }
         catch (Exception ex) when (ex is not FileNotFoundException and not IOException)
@@ -185,40 +156,5 @@ internal sealed class GitFsProvider : ProjectedFileSystemBase
             _logger.LogError(ex, "OpenRead failed for path: {Path}", path);
             throw new IOException($"Failed to read file: {path}", ex);
         }
-    }
-
-    private async Task<IReadOnlyList<ProjectedFileSystemEntry>> GetDirectoryEntriesAsync(VirtualPathMapper.MappedPath mapped, CancellationToken ct)
-    {
-        var scopePath = mapped.RepoPath;
-        if (string.IsNullOrEmpty(scopePath))
-            scopePath = "/";
-
-        var cacheKey = $"dircache::{mapped.VersionType}::{mapped.Version}::{scopePath}";
-        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<ProjectedFileSystemEntry>? cached) && cached is not null)
-        {
-            _logger.LogDebug("Cache hit for {Path}: {Count} entries", scopePath, cached.Count);
-            return cached;
-        }
-
-        var items = await _git.ListItemsAsync(mapped.VersionType, mapped.Version, scopePath, ct).ConfigureAwait(false);
-        _logger.LogDebug("Git client returned {Count} items for {Path}", items.Count, scopePath);
-
-        var entries = items.Select(i =>
-        {
-            if (i.IsFolder)
-                return ProjectedFileSystemEntry.Directory(i.Name);
-
-            // Size from list API may be 0 for some providers; actual size is fetched in GetEntry when needed
-            var size = i.Size <= 0 ? 0 : (int)Math.Min(i.Size, int.MaxValue);
-            return ProjectedFileSystemEntry.File(i.Name, size);
-        }).ToArray();
-
-        _cache.Set(cacheKey, entries, new MemoryCacheEntryOptions
-        {
-            Size = 1,
-            AbsoluteExpirationRelativeToNow = _options.DirectoryCacheTtl,
-        });
-
-        return entries;
     }
 }
