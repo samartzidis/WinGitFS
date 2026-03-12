@@ -11,7 +11,7 @@
     <Copyright>Copyright (c) 2026 George Samartzidis</Copyright>
     <Description>WinGitFS is a Windows application that virtualizes Git repositories (Azure DevOps and GitHub) as a local file system using Windows Projected File System (ProjFS).</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/meziantou/WinGitFS</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/samartzidis/WinGitFS</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
