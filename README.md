@@ -1,6 +1,6 @@
 # WinGitFS
 
-A Windows application that virtualizes remote Git repositories (Azure DevOps and GitHub) as a local read-only file system using Windows Projected File System (ProjFS).
+A Windows application that virtualizes remote Git repositories as a local read-only file system using Windows Projected File System (ProjFS). Supports Azure DevOps, GitHub, and any Git provider accessible via HTTPS.
 
 ## Overview
 
@@ -8,12 +8,12 @@ WinGitFS projects a remote Git repository as a local folder. It uses **git.exe**
 
 ## Features
 
-- **Azure DevOps and GitHub** - Works with both; URL is parsed to build the appropriate clone URL
+- **Any Git provider** - Azure DevOps, GitHub, GitLab, Bitbucket, Gitea, self-hosted, or any HTTPS Git URL
 - **On-demand file content** - Blobs are fetched only when a file is opened (via batch process)
 - **Instant directory browsing** - Full tree is built in memory at startup
 - **Authentication** - PAT via `--pat` (embedded in clone URL); otherwise Git Credential Manager is used (e.g. SSO for ADO)
-- **Branch selection** - `--branch` or branch/path in URL (e.g. GitHub `.../tree/branch/path`, ADO `?version=GBbranch`)
-- **Path filtering** - Virtualize a subfolder via URL (e.g. ADO `?path=/Apps/MyApp`, GitHub `.../tree/main/Apps/MyApp`)
+- **Branch selection** - `--branch` or branch in URL (e.g. GitHub `.../tree/branch`, ADO `?version=GBbranch`)
+- **Path filtering** - Virtualize a subfolder via `--remote-path` or URL (e.g. ADO `?path=/Apps/MyApp`, GitHub `.../tree/main/Apps/MyApp`)
 - **Caching** - In-memory directory tree and file content cache in the provider
 
 ## Requirements
@@ -48,6 +48,13 @@ WinGitFS.exe "https://dev.azure.com/org/Project/_git/Repo?path=/Apps/MyApp&versi
 # Specific branch and subfolder (GitHub: path in URL)
 WinGitFS.exe https://github.com/owner/repo/tree/main/Apps/MyApp --pat <token>
 
+# Any other Git provider (GitLab, Bitbucket, Gitea, self-hosted, etc.)
+WinGitFS.exe https://gitlab.com/owner/repo.git --branch main
+WinGitFS.exe https://bitbucket.org/owner/repo.git --branch develop --remote-path src/app
+
+# --remote-path works with all providers to scope to a subfolder
+WinGitFS.exe https://dev.azure.com/org/Project/_git/Repo --remote-path Apps/MyApp
+
 # Custom local path (second positional or --path)
 WinGitFS.exe https://github.com/owner/repo C:\MyGitFS
 WinGitFS.exe https://github.com/owner/repo --path C:\MyGitFS
@@ -57,7 +64,8 @@ WinGitFS.exe https://github.com/owner/repo --path C:\MyGitFS
 
 - `path` (positional) or `--path` - Local folder to use as the virtualization root (created if needed). If omitted, a temp folder is created and opened in Explorer; it is deleted on exit.
 - `--pat` - Personal Access Token; injected into the clone URL for authentication. If omitted, git uses Git Credential Manager (e.g. browser SSO for ADO).
-- `--branch` - Branch to map (defaults to the repository default branch).
+- `--branch` - Branch to map (defaults to the repository default branch). Overrides any branch extracted from the URL.
+- `--remote-path` - Subfolder path within the repo to use as root (e.g. `src/app`). Overrides any path extracted from the URL. For generic URLs this is the only way to scope to a subfolder.
 
 Press Enter or Ctrl+C in the console to stop; the process exits and any auto-created temp folder is cleaned up.
 

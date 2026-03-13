@@ -5,7 +5,6 @@ internal static class VirtualPathMapper
     internal enum VersionType
     {
         Branch,
-        Commit,
     }
 
     internal sealed record MappedPath(VersionType VersionType, string Version, string RepoPath);
