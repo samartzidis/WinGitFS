@@ -25,10 +25,10 @@ WinGitFS projects a remote Git repository as a local folder. It uses **git.exe**
 ## Usage
 
 ```bash
-WinGitFS.exe <repository-url> [path] [options]
+WinGitFS.exe <repository-url> [local-path] [options]
 ```
 
-The local path can be given as the second positional argument or via `--path`. If both are omitted, a temp folder is used.
+The local path can be given as the second positional argument or via `--local-path`. If both are omitted, a temp folder is used.
 
 ### Examples
 
@@ -55,14 +55,14 @@ WinGitFS.exe https://bitbucket.org/owner/repo.git --branch develop --remote-path
 # --remote-path works with all providers to scope to a subfolder
 WinGitFS.exe https://dev.azure.com/org/Project/_git/Repo --remote-path Apps/MyApp
 
-# Custom local path (second positional or --path)
+# Custom local path (second positional or --local-path)
 WinGitFS.exe https://github.com/owner/repo C:\MyGitFS
-WinGitFS.exe https://github.com/owner/repo --path C:\MyGitFS
+WinGitFS.exe https://github.com/owner/repo --local-path C:\MyGitFS
 ```
 
 ### Options
 
-- `path` (positional) or `--path` - Local folder to use as the virtualization root (created if needed). If omitted, a temp folder is created and opened in Explorer; it is deleted on exit.
+- `local-path` (positional) or `--local-path` - Local folder to use as the virtualization root (created if needed). If omitted, a temp folder is created and opened in Explorer; it is deleted on exit.
 - `--pat` - Personal Access Token; injected into the clone URL for authentication. If omitted, git uses Git Credential Manager (e.g. browser SSO for ADO).
 - `--branch` - Branch to map (defaults to the repository default branch). Overrides any branch extracted from the URL.
 - `--remote-path` - Subfolder path within the repo to use as root (e.g. `src/app`). Overrides any path extracted from the URL. For generic URLs this is the only way to scope to a subfolder.

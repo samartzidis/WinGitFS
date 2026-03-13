@@ -10,10 +10,10 @@ internal sealed class GitFsOptions
     [Value(0, MetaName = "url", Required = true, HelpText = "Git repository URL. Supports Azure DevOps, GitHub, or any Git clone URL:\n  ADO: https://dev.azure.com/org/Project/_git/Repo?path=/Apps/MyApp&version=GBmain\n  GitHub: https://github.com/owner/repo/tree/branch/path\n  Generic: https://gitlab.com/owner/repo.git (use --branch and --remote-path)")]
     public string Url { get; set; } = "";
 
-    [Value(1, MetaName = "path", Required = false, HelpText = "Local folder path for virtualization root (optional; can also be set via --path). If omitted, a temp folder is used.")]
+    [Value(1, MetaName = "local-path", Required = false, HelpText = "Local folder path for virtualization root (optional; can also be set via --local-path). If omitted, a temp folder is used.")]
     public string? LocalPathPositional { get; set; }
 
-    [Option("path", Required = false, HelpText = "Local folder path for virtualization root (will be created if needed). If not specified, creates a temp folder and opens it in Explorer")]
+    [Option("local-path", Required = false, HelpText = "Local folder path for virtualization root (will be created if needed). If not specified, creates a temp folder and opens it in Explorer")]
     public string? LocalPath { get; set; }
 
     [Option("pat", Required = false, HelpText = "Personal Access Token for authentication")]
